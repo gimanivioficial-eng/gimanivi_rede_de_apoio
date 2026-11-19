@@ -1,22 +1,53 @@
+
 import { Outlet } from "react-router";
 import { Navigation } from "./Navigation";
-import { AccessibilityProvider } from "./AccessibilityContext";
+import { AccessibilityProvider, useAccessibility } from "./AccessibilityContext";
+import { Volume2, Square } from "lucide-react";
+
+function VoiceControls() {
+  const { readPage, stopReading } = useAccessibility();
+
+  return (
+    <div
+      className="fixed bottom-5 right-5 z-50 flex items-center gap-2 bg-white dark:bg-gray-800 p-2 rounded-2xl shadow-lg border border-[#D6E4F1] dark:border-gray-700"
+      aria-label="Controles de leitura"
+    >
+      <button
+        onClick={readPage}
+        aria-label="Ler conteúdo da página"
+        title="Ler página inteira"
+        className="flex items-center gap-2 px-4 py-3 rounded-xl bg-[#A7C7E7] hover:bg-[#91B9DF] text-white font-semibold transition-colors"
+      >
+        <Volume2 size={19} />
+        <span className="text-sm">Ouvir página</span>
+      </button>
+
+      <button
+        onClick={stopReading}
+        aria-label="Parar leitura"
+        title="Parar leitura"
+        className="flex items-center justify-center w-11 h-11 rounded-xl bg-[#EDF3F9] hover:bg-[#DCE8F3] text-[#6385A8] transition-colors dark:bg-gray-700 dark:text-blue-200"
+      >
+        <Square size={17} />
+      </button>
+    </div>
+  );
+}
 
 export function Layout() {
   return (
     <AccessibilityProvider>
       <div className="min-h-screen flex flex-col bg-gradient-to-br from-[#f0f8ff] via-white to-[#e6f3ff]">
         <Navigation />
-        
+
         <main className="flex-grow">
-          <Outlet />
+          <div data-read-content>
+            <Outlet />
+          </div>
         </main>
 
-        {/* 🌟 RODAPÉ PROFISSIONAL BRANCO COM ALTO CONTRASTE */}
         <footer className="w-full bg-white border-t border-[#A7C7E7]/30 pt-12 pb-8 mt-12 z-10 shadow-[0_-12px_40px_rgba(167,199,231,0.04)]">
           <div className="max-w-6xl mx-auto px-6 grid grid-cols-1 md:grid-cols-2 gap-10 pb-8 border-b border-slate-100">
-            
-            {/* LADO ESQUERDO: Sobre a Plataforma (Texto escuro e legível) */}
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <svg className="w-5 h-5 text-[#A7C7E7]" fill="currentColor" viewBox="0 0 20 20">
@@ -26,58 +57,39 @@ export function Layout() {
                   GIMANIVI
                 </span>
               </div>
+
               <p className="text-sm text-slate-600 font-medium leading-relaxed max-w-md">
                 Uma plataforma desenvolvida com carinho para ser a sua rede de apoio emocional, oferecendo ferramentas de relaxamento e monitoramento do bem-estar.
               </p>
             </div>
 
-            {/* LADO DIREITO: Menu de Navegação Alinhado à Direita no Computador */}
             <div className="space-y-3 md:justify-self-end">
               <h4 className="text-xs font-black text-[#A7C7E7] uppercase tracking-widest md:text-right">
                 Navegação
               </h4>
+
               <ul className="flex flex-col sm:flex-row gap-x-8 gap-y-2.5 text-sm text-slate-700 font-bold md:justify-end">
-                <li>
-                  <a href="#/" className="hover:text-[#A7C7E7] transition-colors">
-                    Início
-                  </a>
-                </li>
-                <li>
-                  <a href="#/sobre" className="hover:text-[#A7C7E7] transition-colors">
-                    Sobre
-                  </a>
-                </li>
-                <li>
-                  <a href="#/origem" className="hover:text-[#A7C7E7] transition-colors">
-                    Origem
-                  </a>
-                </li>
-                <li>
-                  <a href="#/equipe" className="hover:text-[#A7C7E7] transition-colors">
-                    Equipe
-                  </a>
-                </li>
-                <li>
-                  <a href="#/projeto" className="hover:text-[#A7C7E7] transition-colors">
-                    Projeto
-                  </a>
-                </li>
+                <li><a href="#/" className="hover:text-[#A7C7E7] transition-colors">Início</a></li>
+                <li><a href="#/sobre" className="hover:text-[#A7C7E7] transition-colors">Sobre</a></li>
+                <li><a href="#/origem" className="hover:text-[#A7C7E7] transition-colors">Origem</a></li>
+                <li><a href="#/equipe" className="hover:text-[#A7C7E7] transition-colors">Equipe</a></li>
+                <li><a href="#/projeto" className="hover:text-[#A7C7E7] transition-colors">Projeto</a></li>
               </ul>
             </div>
-
           </div>
 
-          {/* SEÇÃO INFERIOR: Direitos Reservados Simples e Alinhados nas Extremidades */}
           <div className="max-w-6xl mx-auto px-6 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
             <p className="text-xs text-slate-500 font-semibold tracking-wide">
-              &copy; 2026 GIMANIVI. Todos os direitos reservados.
+              © 2026 GIMANIVI. Todos os direitos reservados.
             </p>
+
             <p className="text-[11px] text-slate-400 font-medium">
               Plataforma acadêmica protegida nos termos da lei de direitos autorais.
             </p>
           </div>
         </footer>
 
+        <VoiceControls />
       </div>
     </AccessibilityProvider>
   );
