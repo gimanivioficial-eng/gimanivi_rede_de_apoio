@@ -7,6 +7,7 @@ import { supabase } from "../../supabase";
 export function Navigation() {
   const [isOpen, setIsOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
+  const [desativandoConta, setDesativandoConta] = useState(false);
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -43,38 +44,44 @@ export function Navigation() {
 
   async function desativarConta() {
     const confirmar = window.confirm(
-      "Tem certeza de que deseja desativar sua conta? Você será desconectado."
+      "Tem certeza de que deseja desativar sua conta? Você será desconectado e não poderá entrar novamente enquanto ela estiver desativada."
     );
 
-    if (!confirmar) return;
+    if (!confirmar || desativandoConta) return;
+
+    setDesativandoConta(true);
 
     try {
-      const {
-        data: { user },
-        error: erroUsuario,
-      } = await supabase.auth.getUser();
+      // Desativa somente a conta do usuário autenticado.
+      const { error } = await supabase.rpc("desativar_minha_conta");
 
-      if (erroUsuario || !user) {
-        throw new Error("Não foi possível identificar sua conta.");
+      if (error) {
+        console.error("Erro do Supabase:", {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code,
+        });
+
+        throw new Error(error.message);
       }
 
-      const { error } = await supabase
-        .from("usuarios")
-        .update({ ativo: false })
-        .eq("auth_id", user.id);
-
-      if (error) throw error;
-
+      // Encerra a sessão depois da desativação.
       const { error: erroSaida } = await supabase.auth.signOut();
 
-      if (erroSaida) throw erroSaida;
+      if (erroSaida) {
+        console.error("Erro ao encerrar sessão:", erroSaida);
+        throw new Error(
+          "Conta desativada, mas não foi possível encerrar a sessão automaticamente. Saia da conta manualmente."
+        );
+      }
 
       alert("Sua conta foi desativada com sucesso!");
 
       setAccountOpen(false);
       setIsOpen(false);
       navigate("/login");
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Erro ao desativar conta:", error);
 
       alert(
@@ -82,11 +89,13 @@ export function Navigation() {
           ? error.message
           : "Não foi possível desativar sua conta."
       );
+    } finally {
+      setDesativandoConta(false);
     }
   }
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md shadow-md">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md">
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex items-center justify-between h-20">
 
@@ -126,9 +135,12 @@ export function Navigation() {
                   <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-lg border border-blue-100 p-2">
                     <button
                       onClick={desativarConta}
-                      className="flex items-center w-full gap-2 px-3 py-3 rounded-lg text-red-500 hover:bg-red-50 transition-all text-sm"
+                      disabled={desativandoConta}
+                      className="flex items-center w-full gap-2 px-3 py-3 rounded-lg text-red-500 hover:bg-red-50 transition-all text-sm disabled:opacity-50"
                     >
-                      Desativar minha conta
+                      {desativandoConta
+                        ? "Desativando..."
+                        : "Desativar minha conta"}
                     </button>
                   </div>
                 )}
@@ -182,9 +194,12 @@ export function Navigation() {
                 {accountOpen && (
                   <button
                     onClick={desativarConta}
-                    className="w-full text-left px-7 py-3 text-sm text-red-500 hover:bg-red-50 rounded-lg"
+                    disabled={desativandoConta}
+                    className="w-full text-left px-7 py-3 text-sm text-red-500 hover:bg-red-50 rounded-lg disabled:opacity-50"
                   >
-                    Desativar minha conta
+                    {desativandoConta
+                      ? "Desativando..."
+                      : "Desativar minha conta"}
                   </button>
                 )}
               </div>
