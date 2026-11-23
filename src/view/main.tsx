@@ -1,44 +1,72 @@
+
 import { createRoot } from "react-dom/client";
 import { supabase } from "../supabase";
 import "./styles/index.css";
 
 async function iniciarAplicacao() {
-  const hash = window.location.hash;
+  const url = new URL(window.location.href);
 
-  // Verifica se o endereço contém um link de recuperação.
-  const parametros = new URLSearchParams(hash.replace(/^#/, ""));
+  // Verifica se o Supabase retornou um código PKCE.
+  const codigo = url.searchParams.get("code");
 
-  const accessToken = parametros.get("access_token");
-  const refreshToken = parametros.get("refresh_token");
-  const tipo = parametros.get("type");
-
-  if (tipo === "recovery" && accessToken && refreshToken) {
-    // Salva a informação para a tela de login abrir no modo correto.
-    sessionStorage.setItem("gimanivi_password_recovery", "1");
-
-    // Valida os tokens e cria a sessão de recuperação.
-    const { error } = await supabase.auth.setSession({
-      access_token: accessToken,
-      refresh_token: refreshToken,
-    });
+  if (codigo) {
+    const { error } = await supabase.auth.exchangeCodeForSession(codigo);
 
     if (error) {
-      sessionStorage.removeItem("gimanivi_password_recovery");
-      sessionStorage.setItem(
-        "gimanivi_recovery_error",
-        "O link de recuperação expirou ou não é válido. Solicite outro."
-      );
+      console.error("Erro ao confirmar o e-mail:", error.message);
     }
 
-    // Limpa os tokens da barra de endereço.
     window.history.replaceState(
       {},
       document.title,
-      `${window.location.pathname}${window.location.search}#/login`
+      `${window.location.pathname}#/login`
     );
+  } else {
+    // Verifica os tokens enviados no endereço pelo Supabase.
+    const hash = window.location.hash;
+    const parametros = new URLSearchParams(hash.replace(/^#/, ""));
+
+    const accessToken = parametros.get("access_token");
+    const refreshToken = parametros.get("refresh_token");
+    const tipo = parametros.get("type");
+
+    // Confirmação de cadastro ou recuperação de senha.
+    if (
+      (tipo === "signup" || tipo === "recovery") &&
+      accessToken &&
+      refreshToken
+    ) {
+      if (tipo === "recovery") {
+        sessionStorage.setItem("gimanivi_password_recovery", "1");
+      }
+
+      const { error } = await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      });
+
+      if (error) {
+        console.error("Erro ao validar o link:", error.message);
+
+        if (tipo === "recovery") {
+          sessionStorage.removeItem("gimanivi_password_recovery");
+          sessionStorage.setItem(
+            "gimanivi_recovery_error",
+            "O link de recuperação expirou ou não é válido. Solicite outro."
+          );
+        }
+      }
+
+      // Limpa os tokens e direciona para o login.
+      window.history.replaceState(
+        {},
+        document.title,
+        `${window.location.pathname}#/login`
+      );
+    }
   }
 
-  // Importa o aplicativo somente depois de tratar o link.
+  // Inicia o site somente depois de processar o retorno do Supabase.
   const { default: App } = await import("./App.tsx");
 
   const elemento = document.getElementById("root");

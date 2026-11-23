@@ -1,6 +1,11 @@
 
 import { useState, useEffect } from "react";
-import { MessageCircle, RefreshCw, Sparkles } from "lucide-react";
+import {
+  MessageCircle,
+  RefreshCw,
+  Sparkles,
+  Trash2,
+} from "lucide-react";
 import { supabase } from "../../supabase";
 
 const questions = [
@@ -34,6 +39,7 @@ export function PerguntaDoDia() {
   const [savedAnswers, setSavedAnswers] = useState<Reflection[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
   const [feedback, setFeedback] = useState("");
   const [userId, setUserId] = useState<string | null>(null);
 
@@ -116,6 +122,37 @@ export function PerguntaDoDia() {
     setSaving(false);
 
     handleNewQuestion();
+  };
+
+  const handleDeleteReflection = async (reflectionId: number) => {
+    const confirmed = window.confirm(
+      "Tem certeza de que deseja excluir esta reflexão? Essa ação não poderá ser desfeita."
+    );
+
+    if (!confirmed || !userId || deletingId !== null) return;
+
+    setDeletingId(reflectionId);
+    setFeedback("");
+
+    const { error } = await supabase
+      .from("reflexoes")
+      .delete()
+      .eq("id", reflectionId)
+      .eq("user_id", userId);
+
+    if (error) {
+      console.error("Erro ao excluir reflexão:", error);
+      setFeedback("Não foi possível excluir a reflexão. Tente novamente.");
+      setDeletingId(null);
+      return;
+    }
+
+    setSavedAnswers((previous) =>
+      previous.filter((item) => item.id !== reflectionId)
+    );
+
+    setFeedback("Reflexão excluída com sucesso! 💙");
+    setDeletingId(null);
   };
 
   return (
@@ -217,6 +254,20 @@ export function PerguntaDoDia() {
                   <p className="text-gray-700 dark:text-gray-300 italic break-words">
                     "{item.resposta}"
                   </p>
+
+                  <div className="flex justify-end mt-4">
+                    <button
+                      onClick={() => handleDeleteReflection(item.id)}
+                      disabled={deletingId !== null}
+                      aria-label="Excluir reflexão"
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      <span className="font-semibold text-sm">
+                        {deletingId === item.id ? "Excluindo..." : "Excluir"}
+                      </span>
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

@@ -18,7 +18,6 @@ export function Login() {
   const [mensagem, setMensagem] = useState("");
   const [carregando, setCarregando] = useState(false);
 
-  // VERIFICA RECUPERAÇÃO DE SENHA
   useEffect(() => {
     const recuperacaoPendente = sessionStorage.getItem(
       "gimanivi_password_recovery"
@@ -41,6 +40,7 @@ export function Login() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((evento) => {
       if (evento === "PASSWORD_RECOVERY") {
+        sessionStorage.setItem("gimanivi_password_recovery", "1");
         setModo("novaSenha");
         setErro("");
         setMensagem("");
@@ -81,7 +81,7 @@ export function Login() {
 
       const { data: perfil, error: perfilError } = await supabase
         .from("usuarios")
-        .select("role")
+        .select("role, ativo")
         .eq("auth_id", data.user.id)
         .maybeSingle();
 
@@ -98,6 +98,15 @@ export function Login() {
           "Seu perfil não foi encontrado. Entre em contato com a administração."
         );
       }
+
+      if (perfil.ativo === false) {
+        await supabase.auth.signOut();
+        throw new Error(
+          "Esta conta está desativada. Entre em contato com a administração se precisar de ajuda."
+        );
+      }
+
+      sessionStorage.removeItem("gimanivi_password_recovery");
 
       navigate("/respiracao", {
         state: {
@@ -145,6 +154,7 @@ export function Login() {
           data: {
             nome: nome.trim(),
           },
+          emailRedirectTo: `${window.location.origin}/`,
         },
       });
 
@@ -152,25 +162,27 @@ export function Login() {
 
       if (data.user && !data.session) {
         setMensagem(
-          "Cadastro realizado! Confira seu e-mail para confirmar sua conta antes de entrar."
+          "Cadastro realizado! Confira seu e-mail e clique no link de confirmação para ativar sua conta. Depois, volte aqui para entrar."
         );
+
         setModo("login");
+        setNome("");
+        setSenha("");
         return;
       }
 
       if (data.user) {
-        const { error: perfilError } = await supabase
+        const { data: perfil, error: perfilError } = await supabase
           .from("usuarios")
-          .insert({
-            nome: nome.trim(),
-            email: usuario.trim(),
-            auth_id: data.user.id,
-            role: "usuario",
-          });
+          .select("auth_id")
+          .eq("auth_id", data.user.id)
+          .maybeSingle();
 
-        if (perfilError) {
+        if (perfilError || !perfil) {
+          await supabase.auth.signOut();
+
           throw new Error(
-            "A conta foi criada, mas não foi possível salvar o perfil. Verifique as permissões da tabela usuarios."
+            "A conta foi criada, mas o perfil não foi localizado. Verifique a configuração de criação automática de perfis no Supabase."
           );
         }
       }
@@ -300,6 +312,7 @@ export function Login() {
                   <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
                 </svg>
               </div>
+
               <span className="text-2xl font-black bg-gradient-to-r from-sky-950 to-slate-700 bg-clip-text text-transparent tracking-widest uppercase">
                 GIMANIVI
               </span>
@@ -310,6 +323,7 @@ export function Login() {
             <h2 className="text-3xl font-extrabold text-slate-800 tracking-tight mb-2">
               {titulo}
             </h2>
+
             <p className="text-sm text-slate-400 leading-relaxed">
               {descricao}
             </p>
@@ -346,6 +360,7 @@ export function Login() {
                 <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-2.5 ml-1">
                   Nome completo
                 </label>
+
                 <input
                   type="text"
                   value={nome}
@@ -364,12 +379,14 @@ export function Login() {
                 <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-2.5 ml-1">
                   E-mail
                 </label>
+
                 <div className="relative">
                   <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-slate-400">
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.206" />
                     </svg>
                   </span>
+
                   <input
                     type="email"
                     value={usuario}
@@ -436,6 +453,7 @@ export function Login() {
                 <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-2.5 ml-1">
                   Nova senha
                 </label>
+
                 <input
                   type="password"
                   value={novaSenha}
@@ -508,13 +526,26 @@ export function Login() {
 
       {/* COLUNA DIREITA */}
       <div className="hidden lg:flex flex-1 relative bg-gradient-to-tr from-[#E3F2FD] via-[#F0F6FA] to-[#FFF0F5] items-center justify-center overflow-hidden">
-        <div className="absolute w-[600px] h-[600px] rounded-full bg-gradient-to-tr from-[#A7C7E7]/40 to-[#EBF3FC]/30 blur-[120px] -top-20 -right-20 animate-pulse" style={{ animationDuration: "9s" }}></div>
+        <div
+          className="absolute w-[600px] h-[600px] rounded-full bg-gradient-to-tr from-[#A7C7E7]/40 to-[#EBF3FC]/30 blur-[120px] -top-20 -right-20 animate-pulse"
+          style={{ animationDuration: "9s" }}
+        ></div>
 
-        <div className="absolute w-[500px] h-[500px] rounded-full bg-gradient-to-br from-[#FFE4EC]/40 to-[#B5FFFC]/20 blur-[130px] -bottom-20 -left-10 animate-pulse" style={{ animationDuration: "13s" }}></div>
+        <div
+          className="absolute w-[500px] h-[500px] rounded-full bg-gradient-to-br from-[#FFE4EC]/40 to-[#B5FFFC]/20 blur-[130px] -bottom-20 -left-10 animate-pulse"
+          style={{ animationDuration: "13s" }}
+        ></div>
 
         <div className="max-w-md p-10 z-10 bg-white/35 backdrop-blur-2xl rounded-[36px] border border-white/60 shadow-[0_30px_60px_-15px_rgba(146,187,230,0.2)] text-center">
           <div className="w-16 h-16 mx-auto mb-6 bg-white rounded-2xl flex items-center justify-center shadow-lg text-[#A7C7E7]">
-            <svg className="w-8 h-8 animate-spin" style={{ animationDuration: "30s" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <svg
+              className="w-8 h-8 animate-spin"
+              style={{ animationDuration: "30s" }}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={1.5}
+            >
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M6.343 6.343l-.707-.707M14 12a2 2 0 11-4 0 2 2 0 014 0z" />
             </svg>
           </div>
