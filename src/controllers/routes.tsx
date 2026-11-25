@@ -17,6 +17,7 @@ import { SonsCalmantes } from "../view/pages/SonsCalmantes";
 import { MiniExercicios } from "../view/pages/MiniExercicios";
 import { Sentimentos } from "../view/pages/Sentimentos";
 import { PerguntaDoDia } from "../view/pages/PerguntaDoDia";
+import { Administracao } from "../view/pages/Administracao";
 
 export const router = createHashRouter([
   {
@@ -42,6 +43,7 @@ export const router = createHashRouter([
       { path: "mini-exercicios", Component: MiniExercicios },
       { path: "sentimentos", Component: Sentimentos },
       { path: "pergunta-do-dia", Component: PerguntaDoDia },
+      { path: "administracao", Component: Administracao },
     ],
   },
 ]);

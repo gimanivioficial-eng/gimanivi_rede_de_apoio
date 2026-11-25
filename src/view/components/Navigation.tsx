@@ -1,13 +1,20 @@
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
-import { Menu, X, UserRound, ChevronDown } from "lucide-react";
+import {
+  Menu,
+  X,
+  UserRound,
+  ChevronDown,
+  ShieldCheck,
+} from "lucide-react";
 import { supabase } from "../../supabase";
 
 export function Navigation() {
   const [isOpen, setIsOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [desativandoConta, setDesativandoConta] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -18,6 +25,44 @@ export function Navigation() {
     location.pathname !== "/origem" &&
     location.pathname !== "/equipe" &&
     location.pathname !== "/projeto";
+
+  useEffect(() => {
+    let ativo = true;
+
+    async function verificarAdministrador() {
+      const { data } = await supabase.auth.getUser();
+
+      if (!data.user) {
+        if (ativo) setIsAdmin(false);
+        return;
+      }
+
+      const { data: perfil, error } = await supabase
+        .from("usuarios")
+        .select("role, ativo")
+        .eq("auth_id", data.user.id)
+        .maybeSingle();
+
+      if (ativo) {
+        setIsAdmin(
+          !error && perfil?.role === "admin" && perfil?.ativo === true
+        );
+      }
+    }
+
+    verificarAdministrador();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(() => {
+      verificarAdministrador();
+    });
+
+    return () => {
+      ativo = false;
+      subscription.unsubscribe();
+    };
+  }, [location.pathname]);
 
   const menuInicial = [
     { name: "Início", path: "/" },
@@ -52,7 +97,6 @@ export function Navigation() {
     setDesativandoConta(true);
 
     try {
-      // Desativa somente a conta do usuário autenticado.
       const { error } = await supabase.rpc("desativar_minha_conta");
 
       if (error) {
@@ -66,7 +110,6 @@ export function Navigation() {
         throw new Error(error.message);
       }
 
-      // Encerra a sessão depois da desativação.
       const { error: erroSaida } = await supabase.auth.signOut();
 
       if (erroSaida) {
@@ -114,6 +157,20 @@ export function Navigation() {
                 {item.name}
               </Link>
             ))}
+
+            {isAdmin && (
+              <Link
+                to="/administracao"
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-300 ${
+                  location.pathname === "/administracao"
+                    ? "bg-[#A7C7E7] text-white"
+                    : "text-gray-700 hover:bg-[#A7C7E7]/20"
+                }`}
+              >
+                <ShieldCheck size={17} />
+                Administração
+              </Link>
+            )}
 
             {logado && (
               <div className="relative ml-3">
@@ -172,6 +229,17 @@ export function Navigation() {
                 {item.name}
               </Link>
             ))}
+
+            {isAdmin && (
+              <Link
+                to="/administracao"
+                onClick={() => setIsOpen(false)}
+                className="flex items-center gap-2 px-4 py-3 rounded-lg text-[#668DB5] hover:bg-[#A7C7E7]/20"
+              >
+                <ShieldCheck size={18} />
+                Administração
+              </Link>
+            )}
 
             {logado && (
               <div className="pt-2 border-t border-blue-100">
