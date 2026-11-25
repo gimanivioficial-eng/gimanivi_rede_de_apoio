@@ -15,6 +15,7 @@ export function Navigation() {
   const [accountOpen, setAccountOpen] = useState(false);
   const [desativandoConta, setDesativandoConta] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [autenticado, setAutenticado] = useState(false);
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -24,7 +25,8 @@ export function Navigation() {
     location.pathname !== "/sobre" &&
     location.pathname !== "/origem" &&
     location.pathname !== "/equipe" &&
-    location.pathname !== "/projeto";
+    location.pathname !== "/projeto" &&
+    location.pathname !== "/login";
 
   useEffect(() => {
     let ativo = true;
@@ -33,7 +35,10 @@ export function Navigation() {
       const { data } = await supabase.auth.getUser();
 
       if (!data.user) {
-        if (ativo) setIsAdmin(false);
+        if (ativo) {
+          setAutenticado(false);
+          setIsAdmin(false);
+        }
         return;
       }
 
@@ -44,8 +49,11 @@ export function Navigation() {
         .maybeSingle();
 
       if (ativo) {
+        setAutenticado(true);
         setIsAdmin(
-          !error && perfil?.role === "admin" && perfil?.ativo === true
+          !error &&
+            perfil?.role === "admin" &&
+            perfil?.ativo === true
         );
       }
     }
@@ -87,6 +95,10 @@ export function Navigation() {
 
   const navItems = logado ? menuRecursos : menuInicial;
 
+  // Só mostra Administração em uma área interna para um administrador autenticado.
+  const mostrarAdministracao =
+    logado && autenticado && isAdmin;
+
   async function desativarConta() {
     const confirmar = window.confirm(
       "Tem certeza de que deseja desativar sua conta? Você será desconectado e não poderá entrar novamente enquanto ela estiver desativada."
@@ -100,20 +112,13 @@ export function Navigation() {
       const { error } = await supabase.rpc("desativar_minha_conta");
 
       if (error) {
-        console.error("Erro do Supabase:", {
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code,
-        });
-
+        console.error("Erro do Supabase:", error);
         throw new Error(error.message);
       }
 
       const { error: erroSaida } = await supabase.auth.signOut();
 
       if (erroSaida) {
-        console.error("Erro ao encerrar sessão:", erroSaida);
         throw new Error(
           "Conta desativada, mas não foi possível encerrar a sessão automaticamente. Saia da conta manualmente."
         );
@@ -123,6 +128,8 @@ export function Navigation() {
 
       setAccountOpen(false);
       setIsOpen(false);
+      setIsAdmin(false);
+      setAutenticado(false);
       navigate("/login");
     } catch (error: unknown) {
       console.error("Erro ao desativar conta:", error);
@@ -158,7 +165,7 @@ export function Navigation() {
               </Link>
             ))}
 
-            {isAdmin && (
+            {mostrarAdministracao && (
               <Link
                 to="/administracao"
                 className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-300 ${
@@ -230,7 +237,7 @@ export function Navigation() {
               </Link>
             ))}
 
-            {isAdmin && (
+            {mostrarAdministracao && (
               <Link
                 to="/administracao"
                 onClick={() => setIsOpen(false)}
